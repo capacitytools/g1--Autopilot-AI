@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   G1-Autopilot AI — Global base styles
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* Brand tokens mirroring Tailwind config for use outside utilities */
+    --brand-500: #2f7d4f;
+    --brand-600: #1f6340;
+    --brand-700: #194e34;
+
+    --surface: #ffffff;
+    --surface-muted: #f6f7f8;
+    --surface-border: #e5e7eb;
+
+    --ink: #111827;
+    --ink-muted: #4b5563;
+    --ink-subtle: #6b7280;
+
+    --status-success: #15803d;
+    --status-warning: #b45309;
+    --status-danger: #b91c1c;
+    --status-info: #1d4ed8;
+
+    --radius: 0.5rem;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface-muted text-ink antialiased;
+    font-feature-settings: "kern", "liga", "calt";
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-ink;
+  }
+
+  /* Focus rings — accessible, consistent */
+  *:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: var(--brand-500);
+    color: #ffffff;
+  }
+
+  /* Scrollbars (subtle, non-intrusive) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+}
+
+@layer components {
+  /* Container used across marketing + app pages */
+  .container-app {
+    @apply mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Standard card surface */
+  .card {
+    @apply rounded-lg border border-surface-border bg-surface p-6 shadow-sm;
+  }
+
+  /* Status pill base */
+  .pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .pill-success {
+    @apply bg-green-50 text-status-success;
+  }
+
+  .pill-warning {
+    @apply bg-amber-50 text-status-warning;
+  }
+
+  .pill-danger {
+    @apply bg-red-50 text-status-danger;
+  }
+
+  .pill-info {
+    @apply bg-blue-50 text-status-info;
+  }
+
+  .pill-neutral {
+    @apply bg-gray-100 text-ink-muted;
+  }
+}
+
+@layer utilities {
+  /* Visually hidden but accessible to screen readers */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
