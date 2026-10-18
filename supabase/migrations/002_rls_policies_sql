@@ -1,0 +1,113 @@
+-- ============================================================
+-- G1-Autopilot AI — Row Level Security (RLS) Policies
+-- Phase 2: Authentication and Data Isolation
+-- ============================================================
+-- By default, Supabase tables are accessible by anyone with the 
+-- public anon key. RLS ensures that a user can only access rows 
+-- that belong to them.
+-- ============================================================
+
+-- Enable RLS on all tables
+alter table public.profiles enable row level security;
+alter table public.organizations enable row level security;
+alter table public.organization_members enable row level security;
+
+-- ============================================================
+-- PROFILES POLICIES
+-- ============================================================
+
+-- Users can view their own profile.
+-- (In the future, we may allow viewing other profiles if they are
+-- public, but for now, strict isolation).
+create policy "Users can view own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+-- Users can update their own profile.
+create policy "Users can update own profile"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+-- (Insert is handled by the trigger, so we don't need a public insert policy)
+
+-- ============================================================
+-- ORGANIZATIONS POLICIES
+-- ============================================================
+
+-- Users can view organizations they are a member of.
+create policy "Users can view their organizations"
+  on public.organizations for select
+  using (
+    id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid()
+    )
+  );
+
+-- Users can update organizations they are an owner or admin of.
+create policy "Owners and admins can update organizations"
+  on public.organizations for update
+  using (
+    id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid() 
+      and role in ('owner', 'admin')
+    )
+  );
+
+-- (Insert is handled by the trigger for the personal workspace. 
+-- Future logic will handle creating additional orgs).
+
+-- ============================================================
+-- ORGANIZATION MEMBERS POLICIES
+-- ============================================================
+
+-- Users can view members of organizations they belong to.
+create policy "Users can view members of their organizations"
+  on public.organization_members for select
+  using (
+    organization_id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid()
+    )
+  );
+
+-- Owners can add members (future functionality).
+create policy "Owners can add members"
+  on public.organization_members for insert
+  with check (
+    organization_id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid() 
+      and role = 'owner'
+    )
+  );
+
+-- Owners can update member roles.
+create policy "Owners can update member roles"
+  on public.organization_members for update
+  using (
+    organization_id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid() 
+      and role = 'owner'
+    )
+  );
+
+-- Owners can remove members (but cannot remove themselves if they are the only owner - handled in app logic).
+create policy "Owners can remove members"
+  on public.organization_members for delete
+  using (
+    organization_id in (
+      select organization_id 
+      from public.organization_members 
+      where user_id = auth.uid() 
+      and role = 'owner'
+    )
+  );
