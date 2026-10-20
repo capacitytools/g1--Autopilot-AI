@@ -20,12 +20,13 @@ export function LoginForm() {
       )}
 
       <Input
-        label="Email address"
-        name="email"
-        type="email"
-        autoComplete="email"
+        label="Username"
+        name="username"
+        type="text"
+        placeholder="e.g., john_doe"
+        autoComplete="username"
         required
-        error={state.fieldErrors?.email?.[0]}
+        error={state.fieldErrors?.username?.[0]}
       />
 
       <Input
