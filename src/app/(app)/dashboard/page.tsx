@@ -10,14 +10,32 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+  
+  // If somehow there is no user, the layout should have caught this.
+  // But we add a fallback just in case.
+  if (!user) return null; 
+
   const org = await getCurrentOrganization();
   const supabase = createClient();
 
-  const { data: projects } = await supabase
+  // Fetch projects. We handle any database errors safely.
+  const { data: projects, error } = await supabase
     .from("projects")
-    .select("id, name, status, websites(domain)")
+    .select(`
+      id, 
+      name, 
+      status, 
+      created_at,
+      websites (
+        domain
+      )
+    `)
     .eq("organization_id", org.id)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Dashboard fetch error:", error);
+  }
 
   return (
     <div className="space-y-6">
@@ -25,7 +43,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Welcome back, {user?.displayName || user?.username}. Here is your workspace.
+            Welcome back, {user.displayName || user.username}. Here is your workspace.
           </p>
         </div>
         <Link
@@ -67,17 +85,26 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid gap-4">
           <h2 className="text-lg font-semibold mt-4">Your Projects</h2>
-          {projects.map((project) => (
-            <div key={project.id} className="card flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-ink">{project.name}</h3>
-                <p className="text-sm text-ink-subtle mt-1">
-                  {(project.websites as any)?.domain || "No domain connected"}
-                </p>
+          {projects.map((project) => {
+            // Safely extract the domain. Supabase sometimes returns 
+            // an array or an object depending on the relationship inference.
+            const websiteData = project.websites as any;
+            const domain = Array.isArray(websiteData) 
+              ? websiteData[0]?.domain 
+              : websiteData?.domain;
+
+            return (
+              <div key={project.id} className="card flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-ink">{project.name}</h3>
+                  <p className="text-sm text-ink-subtle mt-1">
+                    {domain || "No domain connected"}
+                  </p>
+                </div>
+                <span className="pill pill-success capitalize">{project.status}</span>
               </div>
-              <span className="pill pill-success capitalize">{project.status}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
