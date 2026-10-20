@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-// G1-ID mirror: We accept username instead of email
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required."),
   password: z.string().min(1, "Password is required."),
@@ -29,21 +28,18 @@ export async function login(prevState: LoginState, formData: FormData): Promise<
 
   const supabase = createClient();
 
-  // 1. Look up the user's email by their username.
-  // Note: We must use the service_role key or a secure RPC function if RLS blocks this.
-  // Since RLS is strict, we will use a safe Postgres function (RPC) to get the email.
-  const { data: emailData, error: lookupError } = await supabase
-    .rpc("get_email_by_username", { lookup_username: username })
-    .single();
+  // 1. Look up the email. The RPC now returns a plain string, not an object.
+  const { data: email, error: lookupError } = await supabase
+    .rpc("get_email_by_username", { lookup_username: username });
 
-  if (lookupError || !emailData) {
-    // Do not reveal if the username exists or not for security.
+  // If the function failed or returned nothing, the username doesn't exist.
+  if (lookupError || !email) {
     return { error: "Invalid username or password." };
   }
 
   // 2. Log in using the email
   const { error: authError } = await supabase.auth.signInWithPassword({
-    email: emailData as string,
+    email: email,
     password,
   });
 
