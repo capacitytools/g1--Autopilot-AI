@@ -8,34 +8,39 @@ export const getCurrentOrganization = cache(async () => {
 
   const supabase = createClient();
   
-  // Try to find the organization
+  // 1. Try to find the organization
   const { data, error } = await supabase
     .from("organization_members")
     .select("organization_id, role, organizations(name, slug)")
     .eq("user_id", user.id)
     .limit(1)
-    .maybeSingle(); // Use maybeSingle so it doesn't throw if empty
+    .maybeSingle();
 
   if (data) {
     return {
       id: data.organization_id,
       role: data.role,
-      name: (data.organizations as any).name,
-      slug: (data.organizations as any).slug,
+      name: (data.organizations as any)?.name || "My Workspace",
+      slug: (data.organizations as any)?.slug || "workspace",
     };
   }
 
-  // SAFETY NET: If no organization exists (e.g. manually created user), create one now.
+  // 2. SAFETY NET: If no organization exists, create one now.
+  // Use a short random string for the slug to guarantee no conflicts.
+  const fallbackSlug = `${user.username}-${Math.random().toString(36).substring(2, 7)}`;
+  
   const { data: newOrg, error: orgError } = await supabase
     .from("organizations")
     .insert({
       name: `${user.displayName || user.username}'s Workspace`,
-      slug: `${user.username}-workspace-fallback`,
+      slug: fallbackSlug,
     })
     .select("id, name, slug")
     .single();
 
   if (orgError || !newOrg) {
+    console.error("Failed to create fallback org:", orgError);
+    // If we STILL fail, we throw, but at least we logged the real database error.
     throw new Error("Could not create a fallback organization.");
   }
 
@@ -48,6 +53,7 @@ export const getCurrentOrganization = cache(async () => {
     });
 
   if (memberError) {
+    console.error("Failed to link fallback org:", memberError);
     throw new Error("Could not link fallback organization.");
   }
 
