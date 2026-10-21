@@ -9,25 +9,37 @@ export const getCurrentOrganization = cache(async () => {
   const supabase = createClient();
   
   // 1. Try to find the organization
-  const { data, error } = await supabase
+  const { data: memberData, error: memberError } = await supabase
     .from("organization_members")
-    .select("organization_id, role, organizations(name, slug)")
+    .select("organization_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
-  if (data) {
+  if (memberError) {
+    console.error("Error fetching membership:", memberError);
+  }
+
+  if (memberData) {
+    // We found a membership. Now get the org details.
+    const { data: orgData } = await supabase
+      .from("organizations")
+      .select("name, slug")
+      .eq("id", memberData.organization_id)
+      .single();
+      
     return {
-      id: data.organization_id,
-      role: data.role,
-      name: (data.organizations as any)?.name || "My Workspace",
-      slug: (data.organizations as any)?.slug || "workspace",
+      id: memberData.organization_id,
+      role: memberData.role,
+      name: orgData?.name || "My Workspace",
+      slug: orgData?.slug || "workspace",
     };
   }
 
-  // 2. SAFETY NET: If no organization exists, create one now.
-  // Use a short random string for the slug to guarantee no conflicts.
-  const fallbackSlug = `${user.username}-${Math.random().toString(36).substring(2, 7)}`;
+  // 2. If no organization exists, create one
+  console.log("No org found, creating one for user:", user.id);
+  
+  const fallbackSlug = `${user.username}-${Math.random().toString(36).substring(2, 6)}`;
   
   const { data: newOrg, error: orgError } = await supabase
     .from("organizations")
@@ -38,13 +50,12 @@ export const getCurrentOrganization = cache(async () => {
     .select("id, name, slug")
     .single();
 
-  if (orgError || !newOrg) {
-    console.error("Failed to create fallback org:", orgError);
-    // If we STILL fail, we throw, but at least we logged the real database error.
-    throw new Error("Could not create a fallback organization.");
+  if (orgError) {
+    console.error("Failed to create org:", orgError);
+    throw new Error(`Failed to create org: ${orgError.message}`);
   }
 
-  const { error: memberError } = await supabase
+  const { error: linkError } = await supabase
     .from("organization_members")
     .insert({
       organization_id: newOrg.id,
@@ -52,9 +63,9 @@ export const getCurrentOrganization = cache(async () => {
       role: "owner",
     });
 
-  if (memberError) {
-    console.error("Failed to link fallback org:", memberError);
-    throw new Error("Could not link fallback organization.");
+  if (linkError) {
+    console.error("Failed to link org:", linkError);
+    throw new Error(`Failed to link org: ${linkError.message}`);
   }
 
   return {
