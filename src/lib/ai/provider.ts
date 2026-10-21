@@ -9,11 +9,6 @@ export interface AIProvider {
   generateText(prompt: string, systemPrompt?: string): Promise<AIResponse>;
 }
 
-/**
- * OpenRouter implementation of the AI Provider.
- * OpenRouter is great because it supports both paid and free models 
- * (like meta-llama/llama-3-8b-instruct:free) using one API key.
- */
 export class OpenRouterProvider implements AIProvider {
   private apiKey: string;
 
@@ -26,13 +21,13 @@ export class OpenRouterProvider implements AIProvider {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${this.apiKey}`,
-        "HTTP-Referer": "https://g1-autopilot-ai.vercel.app", // Required by OpenRouter
+        "HTTP-Referer": "https://g1-autopilot-ai.vercel.app",
         "X-Title": "G1-Autopilot AI",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        // Using a free model by default. You can change this to "openai/gpt-4o" later.
-        model: "meta-llama/llama-3-8b-instruct:free",
+        // Changed to a stable, currently active free model
+        model: "google/gemma-2-9b-it:free", 
         messages: [
           ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
           { role: "user", content: prompt }
@@ -53,10 +48,6 @@ export class OpenRouterProvider implements AIProvider {
   }
 }
 
-/**
- * Factory function to get the configured AI provider.
- * If no key is configured, it returns null so the UI can show a helpful setup message.
- */
 export function getAIProvider(): AIProvider | null {
   const config = getConfig();
   
