@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth/adapter";
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
+import { AppNav } from "@/components/layout/AppNav";
 
 export default async function AppLayout({
   children,
@@ -11,31 +10,8 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-surface-muted flex flex-col">
-      <header className="border-b border-surface-border bg-surface">
-        <div className="container-app flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-md bg-brand-600" aria-hidden="true" />
-              <span className="text-lg font-semibold tracking-tight hidden sm:inline-block">G1-Autopilot</span>
-            </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium text-ink-muted">
-              <Link href="/dashboard" className="hover:text-ink">Dashboard</Link>
-              <Link href="/seo" className="hover:text-ink">SEO Master</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-ink-muted hidden sm:inline-block">
-              {user.email}
-            </span>
-            <form action="/auth/logout" method="POST">
-              <Button variant="secondary" size="sm" type="submit">
-                Log out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
-
+      <AppNav userEmail={user.email} />
+      
       <main id="main-content" className="flex-1 py-8">
         <div className="container-app">
           {children}
