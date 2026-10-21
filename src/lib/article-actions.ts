@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getAIProvider } from "@/lib/ai/provider";
 import { revalidatePath } from "next/cache";
 
-export async function generateArticleDraft(articleId: string) {
+// 1. Generate the Prompt
+export async function generateArticlePrompt(articleId: string) {
   const supabase = createClient();
   const ai = getAIProvider();
 
@@ -12,80 +13,70 @@ export async function generateArticleDraft(articleId: string) {
     return { error: "AI Provider is not configured. Please add OPENROUTER_API_KEY to your environment variables." };
   }
 
-  // 1. Fetch the research session and article data
   const { data: article, error: articleError } = await supabase
     .from("articles")
     .select(`
-      id,
-      title,
-      research_sessions (
-        primary_topic,
-        target_audience,
-        intent,
-        tone
-      )
+      id, title,
+      research_sessions (primary_topic, target_audience, intent, tone)
     `)
     .eq("id", articleId)
     .single();
 
-  if (articleError || !article) {
-    return { error: "Article not found." };
-  }
+  if (articleError || !article) return { error: "Article not found." };
 
-  // TypeScript handling for the nested relationship
-  const session = Array.isArray(article.research_sessions) 
-    ? article.research_sessions[0] 
-    : article.research_sessions;
+  const session = Array.isArray(article.research_sessions) ? article.research_sessions[0] : article.research_sessions;
+  if (!session) return { error: "Research session not found." };
 
-  if (!session) {
-    return { error: "Research session not found." };
-  }
-
-  // 2. Update status to DRAFTING
   await supabase.from("articles").update({ status: "DRAFTING" }).eq("id", articleId);
 
-  // 3. Build the Prompt (The 15-Year SEO Persona)
-  const systemPrompt = `You are an experienced human-style SEO editor with 15 years of experience. 
-Your objective is to produce content that helps readers accomplish a real goal.
-You understand search intent, editorial judgment, and practical examples.
-Do NOT use repetitive AI language (e.g., "In today's fast-paced world", "Let's dive in").
-Write a high-quality draft based on the following parameters.`;
+  const systemPrompt = `You are an expert SEO strategist. Your job is to write a highly detailed, comprehensive AI prompt that the user can copy and paste into a large language model (like ChatGPT or Claude) to generate a perfect article.
+The prompt must include: 
+- The specific target audience and reading level.
+- The required tone and style.
+- A detailed outline (H1, H2s, and H3s).
+- Instructions to include practical examples.
+- A strict instruction to avoid repetitive AI phrases.
+Do NOT write the article. Just write the prompt.`;
 
   const userPrompt = `
 Topic: ${session.primary_topic}
 Target Audience: ${session.target_audience}
 Search Intent: ${session.intent || "Informational"}
-Tone: ${session.tone || "Professional and helpful"}
-
-Write a comprehensive, well-structured article draft. Include an engaging introduction, clear headings, practical examples, and a conclusion.
+Tone: ${session.tone || "Professional"}
   `;
 
   try {
-    // 4. Call the AI
     const response = await ai.generateText(userPrompt, systemPrompt);
 
-    // 5. Save the draft and update status
-    const { error: updateError } = await supabase
-      .from("articles")
-      .update({
-        content: response.text,
-        status: "DRAFT_READY"
-      })
-      .eq("id", articleId);
-
-    if (updateError) {
-      return { error: "Failed to save the generated article." };
-    }
+    // We store the generated prompt in the content field temporarily
+    await supabase.from("articles").update({
+      content: response.text,
+      status: "BRIEF_READY"
+    }).eq("id", articleId);
 
     revalidatePath(`/seo/${articleId}`);
     return { success: true };
-
   } catch (err: any) {
     console.error("AI Generation Error:", err);
-    
-    // Update status to FAILED so the user knows what happened
     await supabase.from("articles").update({ status: "FAILED" }).eq("id", articleId);
-    
-    return { error: err.message || "An error occurred while generating the article." };
+    return { error: err.message || "An error occurred." };
   }
+}
+
+// 2. Save the pasted article
+export async function saveManualArticle(articleId: string, content: string) {
+  const supabase = createClient();
+  
+  const { error } = await supabase
+    .from("articles")
+    .update({
+      content,
+      status: "DRAFT_READY"
+    })
+    .eq("id", articleId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/seo/${articleId}`);
+  return { success: true };
 }
