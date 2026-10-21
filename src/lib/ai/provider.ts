@@ -26,8 +26,8 @@ export class OpenRouterProvider implements AIProvider {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        // Updated to a currently active free model
-        model: "meta-llama/llama-3.3-70b-instruct:free", 
+        // Use the Free Models Router: automatically selects an available free model
+        model: "openrouter/free",
         messages: [
           ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
           { role: "user", content: prompt }
