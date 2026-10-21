@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { startResearch, type SEOState } from "@/app/(app)/seo/actions";
+import { startResearch, type SEOState } from "@/lib/seo-actions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
