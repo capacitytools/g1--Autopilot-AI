@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAIProvider } from "@/lib/ai/provider";
 import { revalidatePath } from "next/cache";
 
-export async function generateSocialPost(articleId: string, platform: 'pinterest' | 'facebook' | 'video_script') {
+export async function generateSocialPost(articleId: string, platform: 'pinterest' | 'facebook' | 'twitter' | 'video_script') {
   const supabase = createClient();
   const ai = getAIProvider();
 
@@ -19,20 +19,19 @@ export async function generateSocialPost(articleId: string, platform: 'pinterest
   if (!article) return { error: "Article not found." };
 
   let systemPrompt = "";
-  let userPrompt = "";
+  let userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
 
   if (platform === 'pinterest') {
     systemPrompt = `You are an expert Pinterest marketer. Read the article and generate a Pin Title (max 100 chars) and a Pin Description (max 500 chars). 
-Output exactly in this format, without any JSON or markdown:
-TITLE: [your title]
-DESCRIPTION: [your description]`;
-    userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
+Format your response exactly like this:
+TITLE: [Your catchy title]
+DESCRIPTION: [Your SEO optimized description with emojis]`;
   } else if (platform === 'facebook') {
     systemPrompt = `You are a Facebook engagement expert. Write a compelling Facebook post (max 300 words) that teases the article and drives clicks. Include 3 relevant hashtags.`;
-    userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
+  } else if (platform === 'twitter') {
+    systemPrompt = `You are a Twitter/X viral expert. Write a short, punchy thread (max 280 characters per tweet, 3-4 tweets) based on this article. Include a hook and a call to action.`;
   } else {
     systemPrompt = `You are a TikTok/YouTube Shorts scriptwriter. Write a 45-second video script based on this article. Include visual cues in [brackets] and a strong hook.`;
-    userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
   }
 
   try {
@@ -42,7 +41,6 @@ DESCRIPTION: [your description]`;
     let finalContent = response.text;
 
     if (platform === 'pinterest') {
-      // Robust parsing for the TITLE: / DESCRIPTION: format
       const titleMatch = response.text.match(/TITLE:\s*(.*)/i);
       const descMatch = response.text.match(/DESCRIPTION:\s*([\s\S]*)/i);
 
@@ -55,6 +53,8 @@ DESCRIPTION: [your description]`;
       if (descMatch && descMatch[1]) {
         finalContent = descMatch[1].trim();
       }
+    } else if (platform === 'twitter') {
+      finalTitle = "Twitter/X Thread";
     } else {
       finalTitle = platform === 'facebook' ? "Facebook Post" : "Video Script";
     }
