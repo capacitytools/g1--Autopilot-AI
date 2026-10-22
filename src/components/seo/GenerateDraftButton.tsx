@@ -81,6 +81,21 @@ export function GenerateDraftButton({
   }
 
   // State 3: BRIEF_READY (Prompt generated, waiting for user)
+  // If there is no content, something went wrong, so we show the retry button.
+  if (status === 'BRIEF_READY' && !existingContent) {
+    return (
+      <div className="text-center py-8 card bg-yellow-50 border-yellow-200">
+        <h2 className="text-lg font-semibold text-yellow-800">Prompt generation incomplete</h2>
+        <p className="mt-2 text-sm text-yellow-700 mb-6">
+          The prompt was not saved correctly. Please click below to try again.
+        </p>
+        <Button onClick={handleGeneratePrompt} loading={loading}>
+          Retry Prompt Generation
+        </Button>
+      </div>
+    );
+  }
+
   if (status === 'BRIEF_READY' && existingContent) {
     return (
       <div className="space-y-6">
@@ -117,6 +132,6 @@ export function GenerateDraftButton({
     );
   }
 
-  // State 4: DRAFT_READY (Article saved)
+  // State 4: DRAFT_READY or beyond (Article saved, we don't show the prompt anymore)
   return null;
 }
