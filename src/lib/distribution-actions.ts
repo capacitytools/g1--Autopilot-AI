@@ -78,6 +78,7 @@ DESCRIPTION: [Your SEO optimized description with emojis]`;
     return { error: err.message || "Failed to generate social post." };
   }
 }
+
 export async function deleteSocialPost(postId: string) {
   const supabase = createClient();
 
