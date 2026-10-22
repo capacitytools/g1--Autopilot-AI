@@ -36,12 +36,24 @@ export function DistributionControls({
   }
 
   async function handleDelete(postId: string) {
+    // Add a browser confirmation
+    if (!window.confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
+
     setDeleting(postId);
     setError(null);
+    
     const result = await deleteSocialPost(postId);
-    if (result.error) setError(result.error);
-    else router.refresh();
-    setDeleting(null);
+    
+    if (result.error) {
+      setError(result.error);
+      setDeleting(null); // Stop loading on error
+    } else {
+      router.refresh();
+      // Note: router.refresh() will re-render the parent server component.
+      // We don't setDeleting(null) here because the component might unmount.
+    }
   }
 
   function handleCopy(post: SocialPost) {
