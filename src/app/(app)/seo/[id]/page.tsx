@@ -65,7 +65,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             <CleanArticleCopy rawContent={article.content} />
           )}
 
-          {['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
+          {/* TEMPORARILY DISABLED IMAGE STUDIO */}
+          {false && ['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
             <ImageStudio articleId={article.id} existingMedia={mediaAssets} />
           )}
 
