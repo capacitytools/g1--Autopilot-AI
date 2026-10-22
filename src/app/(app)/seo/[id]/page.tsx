@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { GenerateDraftButton } from "@/components/seo/GenerateDraftButton";
 import { PublishingControls } from "@/lib/PublishingControls";
+import { Accordion } from "@/components/ui/Accordion";
 
 export const metadata: Metadata = {
   title: "Article Workspace",
@@ -16,7 +17,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
     .select(`
       id, title, content, status, created_at,
       seo_title, meta_description, slug, seo_score, seo_findings,
-      research_sessions (primary_topic, target_audience, intent, tone)
+      research_sessions (primary_topic, target_audience, intent, tone, created_at)
     `)
     .eq("id", params.id)
     .single();
@@ -44,8 +45,10 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-4">
+        {/* Left Column: Actions and History */}
+        <div className="md:col-span-2 space-y-6">
           
+          {/* Active Action Box */}
           <GenerateDraftButton 
             articleId={article.id} 
             status={article.status} 
@@ -64,35 +67,51 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             />
           )}
 
-          {article.content && (
-            <div className="card">
-              <h2 className="text-xl font-bold mb-4">Article Draft</h2>
-              <div className="prose prose-sm sm:prose-base max-w-none">
-                <pre className="whitespace-pre-wrap font-sans text-sm text-ink">
+          {/* HISTORY / DROPDOWNS */}
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold mb-4">Project History</h2>
+
+            {session && (
+              <Accordion title="1. Research Parameters" defaultOpen={false}>
+                <ul className="space-y-2">
+                  <li><strong>Primary Topic:</strong> {session.primary_topic}</li>
+                  <li><strong>Target Audience:</strong> {session.target_audience}</li>
+                  <li><strong>Intent:</strong> {session.intent || "Auto-detected"}</li>
+                  <li><strong>Tone:</strong> {session.tone || "Professional"}</li>
+                  <li><strong>Created:</strong> {new Date(session.created_at).toLocaleDateString()}</li>
+                </ul>
+              </Accordion>
+            )}
+
+            {article.content && (
+              <Accordion title="2. Generated AI Prompt / Article Draft">
+                <pre className="whitespace-pre-wrap font-sans text-sm text-ink max-h-96 overflow-y-auto">
                   {article.content}
                 </pre>
-              </div>
-            </div>
-          )}
+              </Accordion>
+            )}
+
+            {article.seo_title && (
+              <Accordion title="3. SEO Analysis Results">
+                <ul className="space-y-2">
+                  <li><strong>SEO Title:</strong> {article.seo_title}</li>
+                  <li><strong>Meta Description:</strong> {article.meta_description}</li>
+                  <li><strong>Slug:</strong> {article.slug}</li>
+                  <li><strong>Score:</strong> {article.seo_score}/100</li>
+                </ul>
+              </Accordion>
+            )}
+          </div>
+
         </div>
 
+        {/* Right Column: Quick Info */}
         <div className="space-y-4">
           <div className="card bg-surface-muted">
-            <h3 className="font-medium text-sm text-ink mb-3">Research Parameters</h3>
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="text-ink-subtle">Audience</dt>
-                <dd className="font-medium text-ink">{session?.target_audience || "Not specified"}</dd>
-              </div>
-              <div>
-                <dt className="text-ink-subtle">Intent</dt>
-                <dd className="font-medium text-ink">{session?.intent || "Auto-detected"}</dd>
-              </div>
-              <div>
-                <dt className="text-ink-subtle">Tone</dt>
-                <dd className="font-medium text-ink">{session?.tone || "Professional"}</dd>
-              </div>
-            </dl>
+            <h3 className="font-medium text-sm text-ink mb-3">Quick Actions</h3>
+            <p className="text-sm text-ink-muted">
+              Follow the steps on the left to generate, analyze, and publish your article.
+            </p>
           </div>
         </div>
       </div>
