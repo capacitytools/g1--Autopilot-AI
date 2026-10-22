@@ -5,6 +5,8 @@ import { GenerateDraftButton } from "@/components/seo/GenerateDraftButton";
 import { PublishingControls } from "@/lib/PublishingControls";
 import { Accordion } from "@/lib/Accordion";
 import { DistributionControls } from "@/lib/DistributionControls";
+import { ImageStudio } from "@/lib/ImageStudio";
+import { CleanArticleCopy } from "@/lib/CleanArticleCopy";
 
 export const metadata: Metadata = {
   title: "Article Workspace",
@@ -19,7 +21,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
       id, title, content, status, created_at,
       seo_title, meta_description, slug, seo_score, seo_findings,
       research_sessions (primary_topic, target_audience, intent, tone, created_at),
-      social_posts (id, platform, title, content)
+      social_posts (id, platform, title, content),
+      media_assets (id, url, alt_text)
     `)
     .eq("id", params.id)
     .single();
@@ -31,6 +34,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
     : article.research_sessions;
 
   const socialPosts = Array.isArray(article.social_posts) ? article.social_posts : [];
+  const mediaAssets = Array.isArray(article.media_assets) ? article.media_assets : [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -57,6 +61,14 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             existingContent={article.content} 
           />
 
+          {['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && article.content && (
+            <CleanArticleCopy rawContent={article.content} />
+          )}
+
+          {['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
+            <ImageStudio articleId={article.id} existingMedia={mediaAssets} />
+          )}
+
           {['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
             <PublishingControls 
               articleId={article.id}
@@ -69,7 +81,6 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             />
           )}
 
-          {/* Add Distribution Controls here */}
           {['EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
             <DistributionControls 
               articleId={article.id} 
@@ -92,7 +103,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             )}
 
             {article.content && (
-              <Accordion title="2. Generated AI Prompt / Article Draft">
+              <Accordion title="2. Raw AI Draft">
                 <pre className="whitespace-pre-wrap font-sans text-sm text-ink max-h-96 overflow-y-auto">
                   {article.content}
                 </pre>
