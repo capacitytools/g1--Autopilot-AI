@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateSocialPost } from "@/lib/distribution-actions";
+import { generateSocialPost, deleteSocialPost } from "@/lib/distribution-actions";
 import { Button } from "@/components/ui/Button";
 import { Accordion } from "@/lib/Accordion";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,7 @@ export function DistributionControls({
   socialPosts: SocialPost[];
 }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const router = useRouter();
@@ -34,8 +35,17 @@ export function DistributionControls({
     setLoading(null);
   }
 
+  async function handleDelete(postId: string) {
+    setDeleting(postId);
+    setError(null);
+    const result = await deleteSocialPost(postId);
+    if (result.error) setError(result.error);
+    else router.refresh();
+    setDeleting(null);
+  }
+
   function handleCopy(post: SocialPost) {
-    const textToCopy = post.title && post.title !== "Pinterest Pin" && post.title !== "Facebook Post" && post.title !== "Twitter/X Thread" && post.title !== "Video Script"
+    const textToCopy = post.title && !["Pinterest Pin", "Facebook Post", "Twitter/X Thread", "Video Script"].includes(post.title)
       ? `${post.title}\n\n${post.content}`
       : post.content;
 
@@ -75,17 +85,28 @@ export function DistributionControls({
                 {post.title && !["Pinterest Pin", "Facebook Post", "Twitter/X Thread", "Video Script"].includes(post.title) && (
                   <p className="font-semibold text-brand-700">{post.title}</p>
                 )}
-                <div className="bg-surface-muted p-3 rounded text-sm whitespace-pre-wrap">
+                <div className="bg-surface-muted p-3 rounded text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
                   {post.content}
                 </div>
-                <Button 
-                  onClick={() => handleCopy(post)} 
-                  variant="primary" 
-                  size="sm"
-                  className="w-full"
-                >
-                  {copiedId === post.id ? "Copied!" : "Copy to Clipboard"}
-                </Button>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => handleCopy(post)} 
+                    variant="primary" 
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {copiedId === post.id ? "Copied!" : "Copy to Clipboard"}
+                  </Button>
+                  <Button 
+                    onClick={() => handleDelete(post.id)} 
+                    variant="danger" 
+                    size="sm"
+                    loading={deleting === post.id}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </Accordion>
           ))}
