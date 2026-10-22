@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { GenerateDraftButton } from "@/components/seo/GenerateDraftButton";
-import { PublishingControls } from "@/components/seo/PublishingControls";
+import { PublishingControls } from "@/lib/PublishingControls";
 
 export const metadata: Metadata = {
   title: "Article Workspace",
