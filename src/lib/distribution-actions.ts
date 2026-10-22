@@ -10,7 +10,6 @@ export async function generateSocialPost(articleId: string, platform: 'pinterest
 
   if (!ai) return { error: "AI Provider is not configured." };
 
-  // Fetch the article
   const { data: article } = await supabase
     .from("articles")
     .select("title, content, seo_title")
@@ -23,13 +22,16 @@ export async function generateSocialPost(articleId: string, platform: 'pinterest
   let userPrompt = "";
 
   if (platform === 'pinterest') {
-    systemPrompt = `You are an expert Pinterest marketer. Generate a catchy Pin Title (max 100 chars) and a Pin Description (max 500 chars). Format the output as JSON: {"title": "...", "content": "..."}`;
+    systemPrompt = `You are an expert Pinterest marketer. Read the article and generate a Pin Title (max 100 chars) and a Pin Description (max 500 chars). 
+Output exactly in this format, without any JSON or markdown:
+TITLE: [your title]
+DESCRIPTION: [your description]`;
     userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
   } else if (platform === 'facebook') {
-    systemPrompt = `You are a Facebook engagement expert. Write a compelling Facebook post (max 300 words) that teases the article and drives clicks. Include 3 relevant hashtags. Return raw text, no JSON.`;
+    systemPrompt = `You are a Facebook engagement expert. Write a compelling Facebook post (max 300 words) that teases the article and drives clicks. Include 3 relevant hashtags.`;
     userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
   } else {
-    systemPrompt = `You are a TikTok/YouTube Shorts scriptwriter. Write a 45-second video script based on this article. Include visual cues in [brackets] and a strong hook. Return raw text.`;
+    systemPrompt = `You are a TikTok/YouTube Shorts scriptwriter. Write a 45-second video script based on this article. Include visual cues in [brackets] and a strong hook.`;
     userPrompt = `Article Title: ${article.seo_title || article.title}\n\nArticle Content:\n${article.content}`;
   }
 
@@ -40,33 +42,36 @@ export async function generateSocialPost(articleId: string, platform: 'pinterest
     let finalContent = response.text;
 
     if (platform === 'pinterest') {
-      try {
-        const jsonString = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
-        const parsed = JSON.parse(jsonString);
-        finalTitle = parsed.title;
-        finalContent = parsed.content;
-      } catch (e) {
-        finalTitle = "New Pin";
+      // Robust parsing for the TITLE: / DESCRIPTION: format
+      const titleMatch = response.text.match(/TITLE:\s*(.*)/i);
+      const descMatch = response.text.match(/DESCRIPTION:\s*([\s\S]*)/i);
+
+      if (titleMatch && titleMatch[1]) {
+        finalTitle = titleMatch[1].trim();
+      } else {
+        finalTitle = "Pinterest Pin";
+      }
+
+      if (descMatch && descMatch[1]) {
+        finalContent = descMatch[1].trim();
       }
     } else {
       finalTitle = platform === 'facebook' ? "Facebook Post" : "Video Script";
     }
 
-    const { data: newPost, error } = await supabase
+    const { error } = await supabase
       .from("social_posts")
       .insert({
         article_id: articleId,
         platform,
         title: finalTitle,
         content: finalContent,
-      })
-      .select("id")
-      .single();
+      });
 
     if (error) throw new Error(error.message);
 
     revalidatePath(`/seo/${articleId}`);
-    return { success: true, postId: newPost.id };
+    return { success: true };
 
   } catch (err: any) {
     console.error("Social Generation Error:", err);
