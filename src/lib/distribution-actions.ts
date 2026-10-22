@@ -78,3 +78,20 @@ DESCRIPTION: [Your SEO optimized description with emojis]`;
     return { error: err.message || "Failed to generate social post." };
   }
 }
+export async function deleteSocialPost(postId: string) {
+  const supabase = createClient();
+
+  // Delete the post. RLS ensures the user can only delete posts 
+  // belonging to their own organization.
+  const { error } = await supabase
+    .from("social_posts")
+    .delete()
+    .eq("id", postId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/seo/[id]", "page");
+  return { success: true };
+}
