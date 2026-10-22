@@ -68,9 +68,9 @@ export function DistributionControls({
       {socialPosts.length > 0 && (
         <div className="mt-4 space-y-2">
           {socialPosts.map((post) => (
-            <Accordion key={post.id} title={`${post.platform.replace('_', ' ').toUpperCase()} - ${post.title}`}>
+            <Accordion key={post.id} title={`${post.platform.replace('_', ' ').toUpperCase()} - ${post.title || 'Generated Content'}`}>
               <div className="space-y-2">
-                {post.title && <p><strong>Title:</strong> {post.title}</p>}
+                {post.title && post.title !== "Pinterest Pin" && <p><strong>Title:</strong> {post.title}</p>}
                 <div className="bg-surface-muted p-3 rounded text-sm whitespace-pre-wrap">
                   {post.content}
                 </div>
