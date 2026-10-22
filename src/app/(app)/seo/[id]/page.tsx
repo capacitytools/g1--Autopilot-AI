@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { GenerateDraftButton } from "@/components/seo/GenerateDraftButton";
+import { PublishingControls } from "@/components/seo/PublishingControls";
 
 export const metadata: Metadata = {
   title: "Article Workspace",
@@ -14,6 +15,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
     .from("articles")
     .select(`
       id, title, content, status, created_at,
+      seo_title, meta_description, slug, seo_score, seo_findings,
       research_sessions (primary_topic, target_audience, intent, tone)
     `)
     .eq("id", params.id)
@@ -31,8 +33,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">Article Workspace</h1>
           <span className={`pill ${
-            article.status === 'DRAFT_READY' ? 'pill-success' : 
-            article.status === 'BRIEF_READY' ? 'pill-warning' : 
+            article.status === 'PUBLISHED' ? 'pill-success' : 
+            article.status === 'EDITOR_REVIEW' ? 'pill-warning' : 
             article.status === 'FAILED' ? 'pill-danger' : 'pill-info'
           }`}>
             {article.status.replace(/_/g, ' ')}
@@ -50,9 +52,21 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             existingContent={article.content} 
           />
 
-          {article.status === 'DRAFT_READY' && article.content && (
+          {['DRAFT_READY', 'SEO_REVIEW', 'EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
+            <PublishingControls 
+              articleId={article.id}
+              status={article.status}
+              score={article.seo_score || 0}
+              findings={(article.seo_findings as string[]) || []}
+              seoTitle={article.seo_title}
+              metaDescription={article.meta_description}
+              slug={article.slug}
+            />
+          )}
+
+          {article.content && (
             <div className="card">
-              <h2 className="text-xl font-bold mb-4">Final Article Draft</h2>
+              <h2 className="text-xl font-bold mb-4">Article Draft</h2>
               <div className="prose prose-sm sm:prose-base max-w-none">
                 <pre className="whitespace-pre-wrap font-sans text-sm text-ink">
                   {article.content}
