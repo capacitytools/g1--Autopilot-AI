@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { GenerateDraftButton } from "@/components/seo/GenerateDraftButton";
 import { PublishingControls } from "@/lib/PublishingControls";
-import { Accordion } from "@/components/ui/Accordion";
+import { Accordion } from "@/lib/Accordion";
+import { DistributionControls } from "@/lib/DistributionControls";
 
 export const metadata: Metadata = {
   title: "Article Workspace",
@@ -17,7 +18,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
     .select(`
       id, title, content, status, created_at,
       seo_title, meta_description, slug, seo_score, seo_findings,
-      research_sessions (primary_topic, target_audience, intent, tone, created_at)
+      research_sessions (primary_topic, target_audience, intent, tone, created_at),
+      social_posts (id, platform, title, content)
     `)
     .eq("id", params.id)
     .single();
@@ -27,6 +29,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
   const session = Array.isArray(article.research_sessions) 
     ? article.research_sessions[0] 
     : article.research_sessions;
+
+  const socialPosts = Array.isArray(article.social_posts) ? article.social_posts : [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -45,10 +49,8 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Left Column: Actions and History */}
         <div className="md:col-span-2 space-y-6">
           
-          {/* Active Action Box */}
           <GenerateDraftButton 
             articleId={article.id} 
             status={article.status} 
@@ -67,7 +69,14 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             />
           )}
 
-          {/* HISTORY / DROPDOWNS */}
+          {/* Add Distribution Controls here */}
+          {['EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
+            <DistributionControls 
+              articleId={article.id} 
+              socialPosts={socialPosts} 
+            />
+          )}
+
           <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Project History</h2>
 
@@ -78,7 +87,6 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
                   <li><strong>Target Audience:</strong> {session.target_audience}</li>
                   <li><strong>Intent:</strong> {session.intent || "Auto-detected"}</li>
                   <li><strong>Tone:</strong> {session.tone || "Professional"}</li>
-                  <li><strong>Created:</strong> {new Date(session.created_at).toLocaleDateString()}</li>
                 </ul>
               </Accordion>
             )}
@@ -105,12 +113,11 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
 
         </div>
 
-        {/* Right Column: Quick Info */}
         <div className="space-y-4">
           <div className="card bg-surface-muted">
             <h3 className="font-medium text-sm text-ink mb-3">Quick Actions</h3>
             <p className="text-sm text-ink-muted">
-              Follow the steps on the left to generate, analyze, and publish your article.
+              Follow the steps on the left to generate, analyze, publish, and distribute your article.
             </p>
           </div>
         </div>
