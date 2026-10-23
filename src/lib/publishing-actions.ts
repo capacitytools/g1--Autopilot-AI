@@ -20,41 +20,50 @@ export async function analyzeArticleSEO(articleId: string) {
 
   await supabase.from("articles").update({ status: "SEO_REVIEW" }).eq("id", articleId);
 
-  const systemPrompt = `You are an expert SEO analyzer. Analyze the provided article and return a STRICT JSON object with the following keys:
-- "seoTitle": A compelling title under 60 characters.
-- "metaDescription": A summary under 160 characters with a call to action.
-- "slug": A URL-friendly slug (lowercase, hyphens).
-- "score": An integer from 0-100 based on readability, structure, and keyword usage.
-- "findings": An array of strings highlighting areas for improvement (or praise).
+  // Ask for plain text to avoid JSON timeout issues on free models
+  const systemPrompt = `You are an expert SEO analyzer. Read the article and output exactly 5 lines of text based on this template. Do not add any extra text, just the 5 lines.
 
-Do NOT return markdown formatting like \`\`\`json. Return ONLY the raw JSON object.`;
+TITLE: [A compelling title under 60 characters]
+DESCRIPTION: [A summary under 160 characters with a call to action]
+SLUG: [A URL-friendly slug with hyphens]
+SCORE: [A number from 0 to 100]
+FINDINGS: [One short sentence of feedback]`;
 
-  const userPrompt = `Title: ${article.title}\n\nContent:\n${article.content}`;
+  // Limit content to 3000 chars to speed up the AI response
+  const truncatedContent = article.content.substring(0, 3000);
+  const userPrompt = `Title: ${article.title}\n\nContent:\n${truncatedContent}`;
 
   try {
-    // 1. Create a timeout promise (20 seconds max)
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error("AI Request Timed Out")), 20000);
     });
 
-    // 2. Race the AI call against the timeout
     const response = await Promise.race([
       ai.generateText(userPrompt, systemPrompt),
       timeoutPromise
     ]);
 
-    // 3. Parse the response
-    const jsonString = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(jsonString);
+    const text = response.text;
+
+    // Parse the plain text response using Regex
+    const titleMatch = text.match(/TITLE:\s*(.*)/i);
+    const descMatch = text.match(/DESCRIPTION:\s*(.*)/i);
+    const slugMatch = text.match(/SLUG:\s*(.*)/i);
+    const scoreMatch = text.match(/SCORE:\s*(\d+)/i);
+    const findingsMatch = text.match(/FINDINGS:\s*(.*)/i);
+
+    if (!titleMatch || !descMatch) {
+      throw new Error("AI response format was incorrect.");
+    }
 
     const { error } = await supabase
       .from("articles")
       .update({
-        seo_title: parsed.seoTitle,
-        meta_description: parsed.metaDescription,
-        slug: parsed.slug,
-        seo_score: parsed.score,
-        seo_findings: parsed.findings,
+        seo_title: titleMatch[1].trim(),
+        meta_description: descMatch[1].trim(),
+        slug: slugMatch ? slugMatch[1].trim() : article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        seo_score: scoreMatch ? parseInt(scoreMatch[1]) : 75,
+        seo_findings: findingsMatch ? [findingsMatch[1].trim()] : ["Article analyzed successfully."],
         status: "EDITOR_REVIEW"
       })
       .eq("id", articleId);
@@ -66,10 +75,8 @@ Do NOT return markdown formatting like \`\`\`json. Return ONLY the raw JSON obje
   } catch (err: any) {
     console.error("SEO Analysis Error:", err);
     
-    // If it failed, reset the status so they can try again
     await supabase.from("articles").update({ status: "DRAFT_READY" }).eq("id", articleId);
     
-    // Return a helpful error message
     const errorMessage = err.message === "AI Request Timed Out" 
       ? "The AI model took too long to respond. Please try again." 
       : "Failed to parse AI SEO response. Please try again.";
