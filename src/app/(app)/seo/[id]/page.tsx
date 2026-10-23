@@ -15,25 +15,39 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
   try {
     const supabase = createClient();
 
-    const { data: article, error } = await supabase
+    // 1. Fetch the base article
+    const { data: article, error: articleError } = await supabase
       .from("articles")
       .select(`
         id, title, content, status, created_at,
-        seo_title, meta_description, slug, seo_score, seo_findings,
-        research_sessions (primary_topic, target_audience, intent, tone, created_at),
-        social_posts (id, platform, title, content),
-        media_assets (id, url, alt_text)
+        seo_title, meta_description, slug, seo_score, seo_findings
       `)
       .eq("id", params.id)
       .single();
 
-    if (error || !article) notFound();
+    if (articleError || !article) {
+      console.error("Article fetch error:", articleError);
+      notFound();
+    }
 
-    const session = Array.isArray(article.research_sessions) 
-      ? article.research_sessions[0] 
-      : article.research_sessions;
+    // 2. Fetch research session
+    const { data: sessionData } = await supabase
+      .from("research_sessions")
+      .select("primary_topic, target_audience, intent, tone, created_at")
+      .eq("article_id", params.id)
+      .maybeSingle();
 
-    const socialPosts = Array.isArray(article.social_posts) ? article.social_posts : [];
+    // 3. Fetch social posts
+    const { data: socialPosts } = await supabase
+      .from("social_posts")
+      .select("id, platform, title, content")
+      .eq("article_id", params.id);
+
+    // 4. Fetch media assets
+    const { data: mediaAssets } = await supabase
+      .from("media_assets")
+      .select("id, url, alt_text")
+      .eq("article_id", params.id);
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -48,7 +62,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
               {article.status.replace(/_/g, ' ')}
             </span>
           </div>
-          <p className="mt-1 text-sm text-ink-muted">Topic: {session?.primary_topic}</p>
+          <p className="mt-1 text-sm text-ink-muted">Topic: {sessionData?.primary_topic}</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -79,20 +93,20 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
             {['EDITOR_REVIEW', 'PUBLISHED'].includes(article.status) && (
               <DistributionControls 
                 articleId={article.id} 
-                socialPosts={socialPosts} 
+                socialPosts={socialPosts || []} 
               />
             )}
 
             <div className="mt-8">
               <h2 className="text-lg font-semibold mb-4">Project History</h2>
 
-              {session && (
+              {sessionData && (
                 <Accordion title="1. Research Parameters" defaultOpen={false}>
                   <ul className="space-y-2">
-                    <li><strong>Primary Topic:</strong> {session.primary_topic}</li>
-                    <li><strong>Target Audience:</strong> {session.target_audience}</li>
-                    <li><strong>Intent:</strong> {session.intent || "Auto-detected"}</li>
-                    <li><strong>Tone:</strong> {session.tone || "Professional"}</li>
+                    <li><strong>Primary Topic:</strong> {sessionData.primary_topic}</li>
+                    <li><strong>Target Audience:</strong> {sessionData.target_audience}</li>
+                    <li><strong>Intent:</strong> {sessionData.intent || "Auto-detected"}</li>
+                    <li><strong>Tone:</strong> {sessionData.tone || "Professional"}</li>
                   </ul>
                 </Accordion>
               )}
@@ -131,6 +145,7 @@ export default async function ArticleWorkspacePage({ params }: { params: { id: s
       </div>
     );
   } catch (err: any) {
+    // This will catch any server-side crash and show it on the screen
     return (
       <div className="p-8 text-red-500 bg-red-50 rounded-lg">
         <h2 className="font-bold text-lg">Page Crash Caught</h2>
