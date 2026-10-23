@@ -26,8 +26,8 @@ export class OpenRouterProvider implements AIProvider {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        // Use the Free Models Router: automatically selects an available free model
-        model: "openrouter/free",
+        // Switch to a blazing fast model (Mistral 7B) instead of the slow meta-llama
+        model: "mistralai/mistral-7b-instruct:free", 
         messages: [
           ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
           { role: "user", content: prompt }
