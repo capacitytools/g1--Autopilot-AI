@@ -20,7 +20,6 @@ export async function analyzeArticleSEO(articleId: string) {
 
   await supabase.from("articles").update({ status: "SEO_REVIEW" }).eq("id", articleId);
 
-  // Ask for plain text to avoid JSON timeout issues on free models
   const systemPrompt = `You are an expert SEO analyzer. Read the article and output exactly 5 lines of text based on this template. Do not add any extra text, just the 5 lines.
 
 TITLE: [A compelling title under 60 characters]
@@ -29,7 +28,6 @@ SLUG: [A URL-friendly slug with hyphens]
 SCORE: [A number from 0 to 100]
 FINDINGS: [One short sentence of feedback]`;
 
-  // Limit content to 3000 chars to speed up the AI response
   const truncatedContent = article.content.substring(0, 3000);
   const userPrompt = `Title: ${article.title}\n\nContent:\n${truncatedContent}`;
 
@@ -45,7 +43,7 @@ FINDINGS: [One short sentence of feedback]`;
 
     const text = response.text;
 
-    // Parse the plain text response using Regex
+    // Parse the plain text response using Regex, with safe fallbacks
     const titleMatch = text.match(/TITLE:\s*(.*)/i);
     const descMatch = text.match(/DESCRIPTION:\s*(.*)/i);
     const slugMatch = text.match(/SLUG:\s*(.*)/i);
@@ -56,14 +54,21 @@ FINDINGS: [One short sentence of feedback]`;
       throw new Error("AI response format was incorrect.");
     }
 
+    // Added ?. and || "" to prevent TypeScript "possibly undefined" errors
+    const finalTitle = titleMatch[1]?.trim() || article.title;
+    const finalDesc = descMatch[1]?.trim() || "Read this article for more details.";
+    const finalSlug = slugMatch?.[1]?.trim() || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const finalScore = scoreMatch?.[1] ? parseInt(scoreMatch[1]) : 75;
+    const finalFindings = findingsMatch?.[1]?.trim() || "Article analyzed successfully.";
+
     const { error } = await supabase
       .from("articles")
       .update({
-        seo_title: titleMatch[1].trim(),
-        meta_description: descMatch[1].trim(),
-        slug: slugMatch ? slugMatch[1].trim() : article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        seo_score: scoreMatch ? parseInt(scoreMatch[1]) : 75,
-        seo_findings: findingsMatch ? [findingsMatch[1].trim()] : ["Article analyzed successfully."],
+        seo_title: finalTitle,
+        meta_description: finalDesc,
+        slug: finalSlug,
+        seo_score: finalScore,
+        seo_findings: [finalFindings],
         status: "EDITOR_REVIEW"
       })
       .eq("id", articleId);
