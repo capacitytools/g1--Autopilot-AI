@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { analyzeArticleSEO } from "@/lib/publishing-actions";
+import { publishToWordPress } from "@/lib/publish-engine";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
 
@@ -22,19 +23,37 @@ export function PublishingControls({
   metaDescription: string | null;
   slug: string | null;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleAnalyze() {
-    setLoading(true);
+    setAnalyzing(true);
     setError(null);
     const result = await analyzeArticleSEO(articleId);
     
     if (result.error) {
       setError(result.error);
-      setLoading(false); // <--- THIS WAS MISSING. It stops the spinner.
+      setAnalyzing(false);
     } else {
+      router.refresh();
+    }
+  }
+
+  async function handlePublish() {
+    setPublishing(true);
+    setError(null);
+    setPublishedUrl(null);
+
+    const result = await publishToWordPress(articleId);
+
+    if (result.error) {
+      setError(result.error);
+      setPublishing(false);
+    } else {
+      setPublishedUrl(result.url || "Published successfully");
       router.refresh();
     }
   }
@@ -47,7 +66,7 @@ export function PublishingControls({
           Run the SEO engine to generate metadata, a URL slug, and a quality score.
         </p>
         {error && <p className="text-sm text-red-500 bg-red-100 p-2 rounded mb-4">{error}</p>}
-        <Button onClick={handleAnalyze} loading={loading}>Analyze SEO</Button>
+        <Button onClick={handleAnalyze} loading={analyzing}>Analyze SEO</Button>
       </div>
     );
   }
@@ -88,15 +107,26 @@ export function PublishingControls({
           )}
         </div>
 
-        {status !== 'PUBLISHED' && (
+        {status !== 'PUBLISHED' ? (
           <div className="card bg-brand-50 border-brand-200">
             <h3 className="font-semibold text-brand-900 mb-2">Step 4: Publish</h3>
             <p className="text-sm text-brand-800 mb-4">
               Send this article directly to your connected WordPress site.
             </p>
-            <Button disabled className="w-full">
-              Publish to WordPress (Coming Soon)
+            {error && <p className="text-sm text-red-500 bg-red-100 p-2 rounded mb-4">{error}</p>}
+            {publishedUrl && (
+              <p className="text-sm text-green-700 bg-green-100 p-2 rounded mb-4">
+                Published! <a href={publishedUrl} target="_blank" rel="noreferrer" className="underline font-medium">View Post</a>
+              </p>
+            )}
+            <Button onClick={handlePublish} loading={publishing} className="w-full">
+              Publish to WordPress
             </Button>
+          </div>
+        ) : (
+          <div className="card bg-green-50 border-green-200 text-center py-6">
+            <h3 className="font-semibold text-green-900 text-lg">Published Successfully!</h3>
+            <p className="text-sm text-green-800 mt-1">Your article is now live on WordPress.</p>
           </div>
         )}
       </div>
