@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { name: "Workflows", href: "/workflows", disabled: true },
   { name: "Monetization", href: "/monetization", disabled: true },
   { name: "Analytics", href: "/analytics", disabled: true },
-  { name: "Settings", href: "/settings", disabled: true },
+  { name: "Settings", href: "/settings" }, // <--- Fixed: disabled removed
 ];
 
 export function AppNav({ userEmail }: { userEmail: string }) {
