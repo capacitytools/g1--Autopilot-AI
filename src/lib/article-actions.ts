@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getAIProvider } from "@/lib/ai/provider";
 import { revalidatePath } from "next/cache";
 
-// 1. Generate the Prompt
 export async function generateArticlePrompt(articleId: string) {
   const supabase = createClient();
   const ai = getAIProvider();
@@ -13,22 +12,49 @@ export async function generateArticlePrompt(articleId: string) {
     return { error: "AI Provider is not configured. Please add OPENROUTER_API_KEY to your environment variables." };
   }
 
+  // 1. Fetch the article
   const { data: article, error: articleError } = await supabase
     .from("articles")
-    .select(`
-      id, title,
-      research_sessions (primary_topic, target_audience, intent, tone)
-    `)
+    .select("id, title")
     .eq("id", articleId)
     .single();
 
-  if (articleError || !article) return { error: "Article not found." };
+  if (articleError || !article) {
+    return { error: "Article not found." };
+  }
 
-  const session = Array.isArray(article.research_sessions) ? article.research_sessions[0] : article.research_sessions;
-  if (!session) return { error: "Research session not found." };
+  // 2. Try to fetch the research session
+  let { data: session } = await supabase
+    .from("research_sessions")
+    .select("primary_topic, target_audience, intent, tone")
+    .eq("article_id", articleId)
+    .maybeSingle();
 
+  // 3. If no session exists (e.g., created via workflow), create a default one
+  if (!session) {
+    const { data: newSession, error: sessionError } = await supabase
+      .from("research_sessions")
+      .insert({
+        article_id: articleId,
+        primary_topic: article.title,
+        target_audience: "General Audience",
+        language: "en",
+        intent: "INFORMATIONAL",
+        tone: "Professional"
+      })
+      .select("primary_topic, target_audience, intent, tone")
+      .single();
+
+    if (sessionError) {
+      return { error: "Failed to create research session." };
+    }
+    session = newSession;
+  }
+
+  // 4. Update status to DRAFTING
   await supabase.from("articles").update({ status: "DRAFTING" }).eq("id", articleId);
 
+  // 5. Build the Prompt
   const systemPrompt = `You are an expert SEO strategist. Your job is to write a highly detailed, comprehensive AI prompt that the user can copy and paste into a large language model (like ChatGPT or Claude) to generate a perfect article.
 The prompt must include: 
 - The specific target audience and reading level.
@@ -48,7 +74,6 @@ Tone: ${session.tone || "Professional"}
   try {
     const response = await ai.generateText(userPrompt, systemPrompt);
 
-    // We store the generated prompt in the content field temporarily
     await supabase.from("articles").update({
       content: response.text,
       status: "BRIEF_READY"
@@ -63,7 +88,6 @@ Tone: ${session.tone || "Professional"}
   }
 }
 
-// 2. Save the pasted article
 export async function saveManualArticle(articleId: string, content: string) {
   const supabase = createClient();
   
