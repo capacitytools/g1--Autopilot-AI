@@ -11,8 +11,8 @@ const NAV_ITEMS = [
   { name: "Content Studio", href: "/studio", disabled: true },
   { name: "AutoBlog", href: "/autoblog" },
   { name: "Pinterest", href: "/pinterest", disabled: true },
-  { name: "Workflows", href: "/workflows" }, // <--- ENABLED HERE
-  { name: "Monetization", href: "/monetization", disabled: true },
+  { name: "Workflows", href: "/workflows" },
+  { name: "Monetization", href: "/monetization" }, // <--- ENABLED HERE
   { name: "Analytics", href: "/analytics", disabled: true },
   { name: "Settings", href: "/settings" },
 ];
