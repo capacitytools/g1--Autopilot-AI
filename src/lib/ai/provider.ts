@@ -26,8 +26,8 @@ export class OpenRouterProvider implements AIProvider {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        // Switch to a blazing fast model (Mistral 7B) instead of the slow meta-llama
-        model: "mistralai/mistral-7b-instruct:free", 
+        // Changed to Google Gemma 2 (Free, Fast, Stable)
+        model: "google/gemma-2-9b-it:free", 
         messages: [
           ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
           { role: "user", content: prompt }
