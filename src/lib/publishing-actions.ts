@@ -20,16 +20,18 @@ export async function analyzeArticleSEO(articleId: string) {
 
   await supabase.from("articles").update({ status: "SEO_REVIEW" }).eq("id", articleId);
 
-  const systemPrompt = `You are an expert SEO analyzer. Read the article and output exactly 5 lines of text based on this template. Do not add any extra text, just the 5 lines.
-
-TITLE: [A compelling title under 60 characters]
-DESCRIPTION: [A summary under 160 characters with a call to action]
-SLUG: [A URL-friendly slug with hyphens]
-SCORE: [A number from 0 to 100]
-FINDINGS: [One short sentence of feedback]`;
+  // Forceful JSON prompt
+  const systemPrompt = `You are a machine that ONLY outputs valid JSON. Do not output any conversational text, markdown, or code blocks. Output exactly this JSON structure:
+{
+  "title": "A compelling SEO title under 60 chars",
+  "description": "A meta description under 160 chars",
+  "slug": "url-friendly-slug",
+  "score": 85,
+  "findings": ["Finding 1", "Finding 2"]
+}`;
 
   const truncatedContent = article.content.substring(0, 3000);
-  const userPrompt = `Title: ${article.title}\n\nContent:\n${truncatedContent}`;
+  const userPrompt = `Analyze this article and output the JSON:\n\nTitle: ${article.title}\n\nContent:\n${truncatedContent}`;
 
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -41,34 +43,18 @@ FINDINGS: [One short sentence of feedback]`;
       timeoutPromise
     ]);
 
-    const text = response.text;
-
-    // Parse the plain text response using Regex, with safe fallbacks
-    const titleMatch = text.match(/TITLE:\s*(.*)/i);
-    const descMatch = text.match(/DESCRIPTION:\s*(.*)/i);
-    const slugMatch = text.match(/SLUG:\s*(.*)/i);
-    const scoreMatch = text.match(/SCORE:\s*(\d+)/i);
-    const findingsMatch = text.match(/FINDINGS:\s*(.*)/i);
-
-    if (!titleMatch || !descMatch) {
-      throw new Error("AI response format was incorrect.");
-    }
-
-    // Added ?. and || "" to prevent TypeScript "possibly undefined" errors
-    const finalTitle = titleMatch[1]?.trim() || article.title;
-    const finalDesc = descMatch[1]?.trim() || "Read this article for more details.";
-    const finalSlug = slugMatch?.[1]?.trim() || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const finalScore = scoreMatch?.[1] ? parseInt(scoreMatch[1]) : 75;
-    const finalFindings = findingsMatch?.[1]?.trim() || "Article analyzed successfully.";
+    // Clean up potential markdown blocks just in case
+    const jsonString = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(jsonString);
 
     const { error } = await supabase
       .from("articles")
       .update({
-        seo_title: finalTitle,
-        meta_description: finalDesc,
-        slug: finalSlug,
-        seo_score: finalScore,
-        seo_findings: [finalFindings],
+        seo_title: parsed.title || article.title,
+        meta_description: parsed.description || "Read this article for more details.",
+        slug: parsed.slug || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        seo_score: parsed.score || 75,
+        seo_findings: parsed.findings || ["Article analyzed successfully."],
         status: "EDITOR_REVIEW"
       })
       .eq("id", articleId);
