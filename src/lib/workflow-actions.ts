@@ -10,9 +10,7 @@ export async function createWorkflowTemplate(formData: FormData) {
   const org = await getCurrentOrganization();
   
   const name = formData.get("name") as string;
-  const projectId = formData.get("projectId") as string;
 
-  // Define the steps for this workflow (Hardcoded for now to the standard flow)
   const steps = [
     { action: "generate_draft", status: "pending" },
     { action: "analyze_seo", status: "pending" },
@@ -39,7 +37,6 @@ export async function triggerWorkflowRun(templateId: string, formData: FormData)
   const topic = formData.get("topic") as string;
   const projectId = formData.get("projectId") as string;
 
-  // 1. Fetch template to know how many steps
   const { data: template } = await supabase
     .from("workflow_templates")
     .select("steps")
@@ -49,7 +46,6 @@ export async function triggerWorkflowRun(templateId: string, formData: FormData)
   if (!template) return { error: "Template not found" };
   const steps = template.steps as any[];
 
-  // 2. Create the run record
   const { data: run, error: runError } = await supabase
     .from("workflow_runs")
     .insert({
@@ -64,9 +60,8 @@ export async function triggerWorkflowRun(templateId: string, formData: FormData)
 
   if (runError) return { error: runError.message };
 
-  // 3. Kick off the first step asynchronously (simulated here, in a real app use a queue)
-  // For this MVP, we'll just create the article immediately and redirect
-  const { data: article } = await supabase
+  // 1. Create the article
+  const { data: article, error: articleError } = await supabase
     .from("articles")
     .insert({
       project_id: projectId,
@@ -77,16 +72,27 @@ export async function triggerWorkflowRun(templateId: string, formData: FormData)
     .select("id")
     .single();
 
-  if (article) {
-    // Update the run with the created article ID
-    await supabase.from("workflow_runs").update({
-      current_step: 1,
-      output_data: { article_id: article.id }
-    }).eq("id", run.id);
+  if (articleError) return { error: articleError.message };
 
-    // Redirect to the article workspace so the user can see the result
-    redirect(`/seo/${article.id}`);
-  }
+  // 2. Create the research session (This is what was missing!)
+  const { error: sessionError } = await supabase
+    .from("research_sessions")
+    .insert({
+      article_id: article.id,
+      primary_topic: topic,
+      target_audience: "General Audience", // Default for automation
+      language: "en",
+      intent: "INFORMATIONAL",
+      tone: "Professional"
+    });
 
-  return { error: "Failed to create article from workflow" };
+  if (sessionError) return { error: sessionError.message };
+
+  // 3. Update the run with the created article ID
+  await supabase.from("workflow_runs").update({
+    current_step: 1,
+    output_data: { article_id: article.id }
+  }).eq("id", run.id);
+
+  redirect(`/seo/${article.id}`);
 }
