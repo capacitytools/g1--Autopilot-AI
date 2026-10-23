@@ -26,8 +26,8 @@ export class OpenRouterProvider implements AIProvider {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        // Changed to Google Gemma 2 (Free, Fast, Stable)
-        model: "google/gemma-2-9b-it:free", 
+        // Use the Free Models Router. It automatically selects a working free model.
+        model: "openrouter/free", 
         messages: [
           ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
           { role: "user", content: prompt }
