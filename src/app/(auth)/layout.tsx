@@ -1,8 +1,18 @@
-export default function AuthLayout({
+import { getCurrentUser } from "@/lib/auth/adapter";
+import { redirect } from "next/navigation";
+
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getCurrentUser();
+
+  // If already logged in, redirect to dashboard
+  if (user) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-muted px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8 flex items-center gap-2">
