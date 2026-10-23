@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/Button";
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "SEO Master", href: "/seo" },
-  { name: "Content Studio", href: "/studio", disabled: true },
+  { name: "Content Studio", href: "/studio" }, // <--- ENABLED
   { name: "AutoBlog", href: "/autoblog" },
   { name: "Pinterest", href: "/pinterest", disabled: true },
   { name: "Workflows", href: "/workflows" },
-  { name: "Monetization", href: "/monetization" }, // <--- ENABLED HERE
-  { name: "Analytics", href: "/analytics", disabled: true },
+  { name: "Monetization", href: "/monetization" },
+  { name: "Analytics", href: "/analytics" }, // <--- ENABLED
   { name: "Settings", href: "/settings" },
 ];
 
