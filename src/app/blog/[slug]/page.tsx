@@ -11,7 +11,7 @@ export default async function BlogHomePage({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, blog_title, blog_description, theme")
+    .select("id, blog_title, blog_description")
     .eq("blog_slug", params.slug)
     .single();
 
@@ -19,86 +19,115 @@ export default async function BlogHomePage({
 
   const { data: articles } = await supabase
     .from("articles")
-    .select("id, title, seo_title, meta_description, created_at, public_slug, content, cover_image_url")
+    .select("id, title, seo_title, meta_description, created_at, public_slug, content, cover_image_url, category_slug")
     .eq("project_id", project.id)
     .eq("status", "PUBLISHED")
     .order("created_at", { ascending: false });
 
-  // Determine Grid Class based on Theme
-  let gridClass = "grid gap-8";
-  if (project.theme === "magazine") gridClass = "grid gap-6 sm:grid-cols-2 lg:grid-cols-3";
-  if (project.theme === "classic") gridClass = "grid gap-12 max-w-2xl mx-auto"; // Single column classic
+  if (!articles || articles.length === 0) {
+    return <div className="text-center py-20 font-serif text-2xl text-[#174D38]">No articles published yet. Check back soon!</div>;
+  }
+
+  const heroArticle = articles[0];
+  const secondaryArticles = articles.slice(1, 3);
+  const gridArticles = articles.slice(3);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12">
-      {/* Hero Section */}
-      <div className={`text-center space-y-4 py-12 border-b border-surface-border ${project.theme === 'classic' ? 'bg-surface-muted rounded-xl' : ''}`}>
-        <h1 className="text-4xl font-bold tracking-tight text-ink">{project.blog_title}</h1>
-        <p className="text-lg text-ink-muted max-w-2xl mx-auto">
-          {project.blog_description}
-        </p>
-      </div>
+    <div className="space-y-20">
+      
+      {/* 1. Asymmetrical Hero Section */}
+      <section className="grid lg:grid-cols-2 gap-8 items-center">
+        <div className="order-2 lg:order-1 pr-0 lg:pr-8">
+          <span className="text-[#B89A62] font-medium tracking-widest uppercase text-xs mb-3 block">
+            {heroArticle.category_slug ? heroArticle.category_slug.replace('-', ' ') : "Featured Story"}
+          </span>
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight text-[#174D38] mb-6">
+            <Link href={`/blog/${params.slug}/${heroArticle.public_slug}`}>
+              {heroArticle.seo_title || heroArticle.title}
+            </Link>
+          </h1>
+          <p className="text-lg text-[#252823]/70 leading-relaxed mb-8">
+            {heroArticle.meta_description}
+          </p>
+          <Link 
+            href={`/blog/${params.slug}/${heroArticle.public_slug}`}
+            className="inline-flex items-center gap-2 text-[#174D38] font-semibold border-b-2 border-[#174D38] pb-1 hover:text-[#B89A62] hover:border-[#B89A62] transition-colors"
+          >
+            Read The Story &rarr;
+          </Link>
+        </div>
+        <div className="order-1 lg:order-2">
+          <Link href={`/blog/${params.slug}/${heroArticle.public_slug}`} className="block relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5] overflow-hidden">
+            {heroArticle.cover_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={heroArticle.cover_image_url} 
+                alt={heroArticle.seo_title || heroArticle.title} 
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#EDE6DA] flex items-center justify-center text-[#174D38] font-serif text-4xl">G1</div>
+            )}
+          </Link>
+        </div>
+      </section>
 
-      {/* Articles Grid */}
-      <div>
-        <h2 className="text-2xl font-semibold mb-6">Latest Articles</h2>
-        
-        {(!articles || articles.length === 0) ? (
-          <div className="card text-center py-12">
-            <p className="text-ink-muted">No articles published yet. Check back soon!</p>
-          </div>
-        ) : (
-          <div className={gridClass}>
-            {articles.map((article) => (
-              <article key={article.id} className={`card hover:shadow-md transition-shadow p-0 overflow-hidden ${
-                project.theme === "classic" ? "flex flex-col sm:flex-row items-center gap-6 p-6" : "flex flex-col"
-              }`}>
-                
-                {/* Cover Image */}
+      {/* 2. Category Discovery Tiles */}
+      <section className="py-12 border-y border-[#EDE6DA]">
+        <h2 className="font-serif text-3xl font-bold text-[#174D38] text-center mb-10">Explore by Room</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {['Living Room', 'Bedroom', 'Kitchen', 'Bathroom'].map((cat) => (
+            <Link 
+              key={cat} 
+              href={`/blog/${params.slug}?cat=${cat.toLowerCase().replace(' ', '-')}-ideas`}
+              className="group relative h-48 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[#252823]/40 group-hover:bg-[#174D38]/60 transition-colors z-10" />
+              <div className="absolute inset-0 bg-[#EDE6DA]" />
+              <div className="absolute inset-0 flex items-end justify-center pb-6 z-20">
+                <span className="text-white font-serif text-xl tracking-wide">{cat}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. Latest Stories Grid */}
+      <section>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="font-serif text-3xl font-bold text-[#174D38]">Latest Inspiration</h2>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+          {gridArticles.map((article) => (
+            <article key={article.id} className="group">
+              <Link href={`/blog/${params.slug}/${article.public_slug}`} className="block aspect-[4/3] overflow-hidden mb-4">
                 {article.cover_image_url ? (
-                  <Link href={`/blog/${params.slug}/${article.public_slug || article.id}`} className={project.theme === 'classic' ? 'w-full sm:w-1/3' : 'w-full'}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={article.cover_image_url} 
-                      alt={article.seo_title || article.title} 
-                      className={`object-cover ${project.theme === 'classic' ? 'h-32 w-full rounded-md' : 'w-full h-48'}`}
-                    />
-                  </Link>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={article.cover_image_url} 
+                    alt={article.seo_title || article.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
                 ) : (
-                  <div className={`bg-brand-100 flex items-center justify-center ${project.theme === 'classic' ? 'w-full sm:w-1/3 h-32 rounded-md' : 'w-full h-48'}`}>
-                    <span className="text-brand-300 font-bold text-2xl">G1</span>
-                  </div>
+                  <div className="w-full h-full bg-[#EDE6DA] flex items-center justify-center text-[#174D38] font-serif text-2xl">G1</div>
                 )}
-                
-                <div className={`flex-1 flex flex-col justify-between ${project.theme !== 'classic' ? 'p-5' : ''}`}>
-                  <div>
-                    <h3 className="text-xl font-semibold text-ink hover:text-brand-600 mb-2 line-clamp-2">
-                      <Link href={`/blog/${params.slug}/${article.public_slug || article.id}`}>
-                        {article.seo_title || article.title}
-                      </Link>
-                    </h3>
-                    <p className="text-sm text-ink-muted line-clamp-3">
-                      {article.meta_description || article.content?.substring(0, 120) + "..."}
-                    </p>
-                  </div>
-                  
-                  <div className={`pt-4 mt-4 border-t border-surface-border flex items-center justify-between ${project.theme === 'classic' ? 'border-none mt-2 pt-0' : ''}`}>
-                    <span className="text-xs text-ink-subtle">
-                      {new Date(article.created_at).toLocaleDateString()}
-                    </span>
-                    <Link 
-                      href={`/blog/${params.slug}/${article.public_slug || article.id}`}
-                      className="text-sm font-medium text-brand-600 hover:underline"
-                    >
-                      Read More &rarr;
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
+              </Link>
+              <span className="text-[#B89A62] text-xs font-semibold tracking-wider uppercase mb-2 block">
+                {article.category_slug ? article.category_slug.replace('-', ' ') : "Home Style"}
+              </span>
+              <h3 className="font-serif text-xl font-bold text-[#174D38] group-hover:text-[#B89A62] transition-colors mb-2 line-clamp-2">
+                <Link href={`/blog/${params.slug}/${article.public_slug}`}>
+                  {article.seo_title || article.title}
+                </Link>
+              </h3>
+              <p className="text-sm text-[#252823]/70 line-clamp-2">
+                {article.meta_description}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
     </div>
   );
 }
