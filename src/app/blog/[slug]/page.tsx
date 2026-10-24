@@ -28,7 +28,10 @@ export default async function BlogHomePage({
     return <div className="text-center py-20 font-serif text-2xl text-[#174D38]">No articles published yet. Check back soon!</div>;
   }
 
+  // Safe fallback for TypeScript
   const heroArticle = articles[0];
+  if (!heroArticle) return null; 
+
   const secondaryArticles = articles.slice(1, 3);
   const gridArticles = articles.slice(3);
 
