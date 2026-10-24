@@ -28,7 +28,7 @@ export function AppSidebar({
 
   return (
     <>
-      {/* Mobile Header */}
+      {/* Mobile Header (Only visible on small screens) */}
       <header className="md:hidden border-b border-surface-border bg-surface sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -48,9 +48,17 @@ export function AppSidebar({
         </div>
       </header>
 
-      {/* Sidebar (Desktop & Mobile) */}
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsOpen(false)} 
+        />
+      )}
+
+      {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-surface border-r border-surface-border transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-surface-border transform transition-transform duration-300 ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex md:flex-col
       `}>
@@ -60,6 +68,11 @@ export function AppSidebar({
             <div className="h-8 w-8 rounded-md bg-brand-600" aria-hidden="true" />
             <span className="text-lg font-semibold tracking-tight">G1-Autopilot</span>
           </Link>
+        </div>
+
+        {/* Mobile Close Button */}
+        <div className="md:hidden flex justify-end p-4">
+          <button onClick={() => setIsOpen(false)} className="text-ink-muted hover:text-ink text-2xl">&times;</button>
         </div>
 
         {/* Website Switcher */}
@@ -112,14 +125,6 @@ export function AppSidebar({
           </form>
         </div>
       </aside>
-
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden" 
-          onClick={() => setIsOpen(false)} 
-        />
-      )}
     </>
   );
 }
