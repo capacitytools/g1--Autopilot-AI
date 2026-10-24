@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 const NAV_ITEMS = [
-  { name: "Overview", href: "/dashboard" },
+  { name: "Dashboard", href: "/dashboard" }, // Changed back to Dashboard
   { name: "AI Article Studio", href: "/seo" },
   { name: "Content Studio", href: "/studio" },
   { name: "Pinterest Autopilot", href: "/pinterest", disabled: true },
@@ -28,7 +28,7 @@ export function AppSidebar({
 
   return (
     <>
-      {/* Mobile Header (Only visible on small screens) */}
+      {/* Mobile Header */}
       <header className="md:hidden border-b border-surface-border bg-surface sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -62,7 +62,6 @@ export function AppSidebar({
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex md:flex-col
       `}>
-        {/* Desktop Logo */}
         <div className="hidden md:flex h-16 items-center px-6 border-b border-surface-border">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-md bg-brand-600" aria-hidden="true" />
@@ -70,12 +69,10 @@ export function AppSidebar({
           </Link>
         </div>
 
-        {/* Mobile Close Button */}
         <div className="md:hidden flex justify-end p-4">
           <button onClick={() => setIsOpen(false)} className="text-ink-muted hover:text-ink text-2xl">&times;</button>
         </div>
 
-        {/* Website Switcher */}
         <div className="p-4 border-b border-surface-border">
           <label className="text-xs font-semibold text-ink-subtle uppercase tracking-wider mb-2 block">
             Active Website
@@ -92,7 +89,6 @@ export function AppSidebar({
           </select>
         </div>
 
-        {/* Navigation Links */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/dashboard");
@@ -112,7 +108,6 @@ export function AppSidebar({
           })}
         </nav>
 
-        {/* User Profile / Logout */}
         <div className="p-4 border-t border-surface-border">
           <div className="mb-4 px-2">
             <p className="text-xs text-ink-subtle">Logged in as</p>
