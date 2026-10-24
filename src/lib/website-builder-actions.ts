@@ -70,7 +70,13 @@ export async function createManualWebsite(formData: FormData) {
   const result = manualSchema.safeParse(rawData);
   if (!result.success) return { error: "Invalid input. Please check the fields." };
 
-  return createProjectRecord(org.id, result.data.slug, result.data.title, result.data.description);
+  // Add || "" to prevent TypeScript undefined errors
+  return createProjectRecord(
+    org.id, 
+    result.data.slug, 
+    result.data.title, 
+    result.data.description || ""
+  );
 }
 
 // 2. AI GENERATION
@@ -115,5 +121,11 @@ export async function generateAIWebsite(formData: FormData) {
     }
   }
 
-  return createProjectRecord(org.id, result.data.slug, blogTitle, blogDescription, theme);
+  return createProjectRecord(
+    org.id, 
+    result.data.slug, 
+    blogTitle, 
+    blogDescription, 
+    theme
+  );
 }
