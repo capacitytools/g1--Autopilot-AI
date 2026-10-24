@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { analyzeArticleSEO } from "@/lib/publishing-actions";
-import { publishToWordPress } from "@/lib/publish-engine";
+import { publishArticle } from "@/lib/publish-engine";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export function PublishingControls({ 
   articleId, 
@@ -47,7 +48,7 @@ export function PublishingControls({
     setError(null);
     setPublishedUrl(null);
 
-    const result = await publishToWordPress(articleId);
+    const result = await publishArticle(articleId);
 
     if (result.error) {
       setError(result.error);
@@ -111,22 +112,27 @@ export function PublishingControls({
           <div className="card bg-brand-50 border-brand-200">
             <h3 className="font-semibold text-brand-900 mb-2">Step 4: Publish</h3>
             <p className="text-sm text-brand-800 mb-4">
-              Send this article directly to your connected WordPress site.
+              Publish this article to your live G1 Public Blog.
             </p>
             {error && <p className="text-sm text-red-500 bg-red-100 p-2 rounded mb-4">{error}</p>}
-            {publishedUrl && (
-              <p className="text-sm text-green-700 bg-green-100 p-2 rounded mb-4">
-                Published! <a href={publishedUrl} target="_blank" rel="noreferrer" className="underline font-medium">View Post</a>
-              </p>
-            )}
             <Button onClick={handlePublish} loading={publishing} className="w-full">
-              Publish to WordPress
+              Publish to Live Blog
             </Button>
           </div>
         ) : (
           <div className="card bg-green-50 border-green-200 text-center py-6">
             <h3 className="font-semibold text-green-900 text-lg">Published Successfully!</h3>
-            <p className="text-sm text-green-800 mt-1">Your article is now live on WordPress.</p>
+            <p className="text-sm text-green-800 mt-1 mb-4">Your article is now live.</p>
+            {publishedUrl && (
+              <a 
+                href={publishedUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="inline-flex h-10 items-center justify-center rounded-md bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700"
+              >
+                View Live Article
+              </a>
+            )}
           </div>
         )}
       </div>
