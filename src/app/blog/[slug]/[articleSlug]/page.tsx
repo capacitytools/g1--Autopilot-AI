@@ -4,11 +4,32 @@ import { Metadata } from "next";
 import { trackBlogView } from "@/lib/blog-analytics-actions";
 
 export async function generateMetadata({ params }: { params: { slug: string, articleSlug: string } }): Promise<Metadata> {
-  // ... (keep existing metadata code)
+  const supabase = createClient();
+  
+  const { data: article } = await supabase
+    .from("articles")
+    .select("seo_title, meta_description, cover_image_url")
+    .eq("public_slug", params.articleSlug)
+    .single();
+
+  return {
+    title: article?.seo_title || "Article",
+    description: article?.meta_description || "",
+    openGraph: {
+      images: article?.cover_image_url ? [article.cover_image_url] : [],
+    }
+  };
 }
 
 function formatContent(text: string) {
-  // ... (keep existing formatContent code)
+  return text
+    .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-8 mb-4 text-ink">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-10 mb-4 text-ink">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-12 mb-6 text-ink">$1</h1>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" class="text-brand-600 hover:underline">$1</a>')
+    .replace(/\n/gim, '<br />');
 }
 
 export default async function BlogArticlePage({
