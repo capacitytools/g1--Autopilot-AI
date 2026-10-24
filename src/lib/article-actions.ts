@@ -1,106 +1,60 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getAIProvider } from "@/lib/ai/provider";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-export async function generateArticlePrompt(articleId: string) {
+export async function trackBlogView(articleId: string, projectId: string) {
   const supabase = createClient();
-  const ai = getAIProvider();
+  const headersList = headers();
+  
+  // Detect device from User-Agent
+  const userAgent = headersList.get("user-agent") || "";
+  let device = "Desktop";
+  if (/mobile/i.test(userAgent)) device = "Mobile";
+  if (/tablet/i.test(userAgent)) device = "Tablet";
 
-  if (!ai) {
-    return { error: "AI Provider is not configured. Please add OPENROUTER_API_KEY to your environment variables." };
-  }
+  // Detect country (Vercel provides this header on the edge)
+  const country = headersList.get("x-vercel-ip-country") || "Unknown";
 
-  // 1. Fetch the article
-  const { data: article, error: articleError } = await supabase
-    .from("articles")
-    .select("id, title")
-    .eq("id", articleId)
-    .single();
+  // Detect source (Referer header)
+  const referer = headersList.get("referer") || "";
+  let source = "Direct";
+  if (referer.includes("google")) source = "Google";
+  else if (referer.includes("pinterest")) source = "Pinterest";
+  else if (referer.includes("facebook")) source = "Facebook";
+  else if (referer && !referer.includes("g1-autopilot")) source = "Referral";
 
-  if (articleError || !article) {
-    return { error: "Article not found." };
-  }
-
-  // 2. Try to fetch the research session
-  let { data: session } = await supabase
-    .from("research_sessions")
-    .select("primary_topic, target_audience, intent, tone")
-    .eq("article_id", articleId)
-    .maybeSingle();
-
-  // 3. If no session exists (e.g., created via workflow), create a default one
-  if (!session) {
-    const { data: newSession, error: sessionError } = await supabase
-      .from("research_sessions")
-      .insert({
-        article_id: articleId,
-        primary_topic: article.title,
-        target_audience: "General Audience",
-        language: "en",
-        intent: "INFORMATIONAL",
-        tone: "Professional"
-      })
-      .select("primary_topic, target_audience, intent, tone")
-      .single();
-
-    if (sessionError) {
-      return { error: "Failed to create research session." };
-    }
-    session = newSession;
-  }
-
-  // 4. Update status to DRAFTING
-  await supabase.from("articles").update({ status: "DRAFTING" }).eq("id", articleId);
-
-  // 5. Build the Prompt
-  const systemPrompt = `You are an expert SEO strategist. Your job is to write a highly detailed, comprehensive AI prompt that the user can copy and paste into a large language model (like ChatGPT or Claude) to generate a perfect article.
-The prompt must include: 
-- The specific target audience and reading level.
-- The required tone and style.
-- A detailed outline (H1, H2s, and H3s).
-- Instructions to include practical examples.
-- A strict instruction to avoid repetitive AI phrases.
-Do NOT write the article. Just write the prompt.`;
-
-  const userPrompt = `
-Topic: ${session.primary_topic}
-Target Audience: ${session.target_audience}
-Search Intent: ${session.intent || "Informational"}
-Tone: ${session.tone || "Professional"}
-  `;
-
-  try {
-    const response = await ai.generateText(userPrompt, systemPrompt);
-
-    await supabase.from("articles").update({
-      content: response.text,
-      status: "BRIEF_READY"
-    }).eq("id", articleId);
-
-    revalidatePath(`/seo/${articleId}`);
-    return { success: true };
-  } catch (err: any) {
-    console.error("AI Generation Error:", err);
-    await supabase.from("articles").update({ status: "FAILED" }).eq("id", articleId);
-    return { error: err.message || "An error occurred." };
-  }
+  // Insert the view (fire and forget)
+  await supabase.from("blog_analytics").insert({
+    article_id: articleId,
+    project_id: projectId,
+    device,
+    country,
+    source,
+  });
 }
 
-export async function saveManualArticle(articleId: string, content: string) {
+export async function updateBlogPost(articleId: string, formData: FormData) {
   const supabase = createClient();
   
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
+  const coverImageUrl = formData.get("coverImageUrl") as string;
+
   const { error } = await supabase
     .from("articles")
     .update({
+      title,
+      seo_title: title,
       content,
-      status: "DRAFT_READY"
+      cover_image_url: coverImageUrl || null,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", articleId);
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/seo/${articleId}`);
+  revalidatePath("/dashboard");
   return { success: true };
 }
