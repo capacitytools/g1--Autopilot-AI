@@ -1,10 +1,10 @@
 import { Metadata } from "next";
-import { CreateBlogForm } from "@/lib/CreateBlogForm";
+import { WebsiteBuilderUI } from "@/lib/WebsiteBuilderUI";
 
 export const metadata: Metadata = {
-  title: "Create a Blog",
+  title: "Create a Website",
 };
 
 export default function CreateBlogPage() {
-  return <CreateBlogForm />;
+  return <WebsiteBuilderUI />;
 }
