@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { updateBlogTheme, deleteArticle } from "@/lib/blog-manager-actions";
 import { Button } from "@/components/ui/Button";
+import { EditPostModal } from "@/lib/EditPostModal";
 
 const THEMES = [
   { id: "default", name: "G1 Clean (Default)" },
@@ -23,6 +24,7 @@ export function BlogManagerUI({
   const [theme, setTheme] = useState(project.theme || "default");
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingArticle, setEditingArticle] = useState<any | null>(null);
 
   async function handleThemeChange(newTheme: string) {
     setTheme(newTheme);
@@ -32,7 +34,7 @@ export function BlogManagerUI({
   }
 
   async function handleDelete(articleId: string) {
-    if (!window.confirm("Are you sure you want to delete this article? This cannot be undone.")) return;
+    if (!window.confirm("Are you sure you want to delete this article?")) return;
     setDeletingId(articleId);
     await deleteArticle(articleId, project.id);
     setDeletingId(null);
@@ -47,17 +49,10 @@ export function BlogManagerUI({
           <p className="mt-1 text-sm text-ink-muted">/blog/{project.blog_slug}</p>
         </div>
         <div className="flex gap-3">
-          <a 
-            href={`/blog/${project.blog_slug}`} 
-            target="_blank" 
-            className="inline-flex h-10 items-center justify-center rounded-md border border-surface-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-muted"
-          >
+          <a href={`/blog/${project.blog_slug}`} target="_blank" className="inline-flex h-10 items-center justify-center rounded-md border border-surface-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-muted">
             View Live Blog
           </a>
-          <Link 
-            href={`/studio/write?project=${project.id}`}
-            className="inline-flex h-10 items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
-          >
+          <Link href={`/studio/write?project=${project.id}`} className="inline-flex h-10 items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700">
             Write New Post
           </Link>
         </div>
@@ -89,32 +84,19 @@ export function BlogManagerUI({
         <div className="md:col-span-2 card">
           <h2 className="text-lg font-semibold mb-4">Your Posts</h2>
           {articles.length === 0 ? (
-            <p className="text-sm text-ink-muted py-4">No posts yet. Click "Write New Post" to get started.</p>
+            <p className="text-sm text-ink-muted py-4">No posts yet.</p>
           ) : (
             <div className="divide-y divide-surface-border">
               {articles.map((article) => (
-                <div key={article.id} className="py-3 flex items-center justify-between gap-4">
+                <div key={article.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <p className="font-medium text-ink line-clamp-1">{article.title}</p>
-                    <p className="text-xs text-ink-subtle mt-1">
-                      {new Date(article.created_at).toLocaleDateString()} • {article.status}
-                    </p>
+                    <p className="text-xs text-ink-subtle mt-1">{new Date(article.created_at).toLocaleDateString()}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Link 
-                      href={`/blog/${project.blog_slug}/${article.public_slug}`} 
-                      target="_blank"
-                      className="text-sm text-brand-600 hover:underline"
-                    >
-                      View
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(article.id)}
-                      disabled={deletingId === article.id}
-                      className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingArticle(article)} className="text-sm text-brand-600 hover:underline">Edit</button>
+                    <Link href={`/blog/${project.blog_slug}/${article.public_slug}`} target="_blank" className="text-sm text-ink-muted hover:underline">View</Link>
+                    <button onClick={() => handleDelete(article.id)} disabled={deletingId === article.id} className="text-sm text-red-600 hover:underline disabled:opacity-50">Delete</button>
                   </div>
                 </div>
               ))}
@@ -126,7 +108,7 @@ export function BlogManagerUI({
         <div className="card bg-surface-muted">
           <h2 className="text-lg font-semibold mb-4">Recent Traffic</h2>
           {views.length === 0 ? (
-            <p className="text-sm text-ink-muted">No traffic yet. Share your blog link to start getting visitors!</p>
+            <p className="text-sm text-ink-muted">No traffic yet.</p>
           ) : (
             <div className="space-y-3">
               {views.map((view) => (
@@ -139,6 +121,19 @@ export function BlogManagerUI({
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingArticle && (
+        <EditPostModal 
+          article={editingArticle} 
+          projectId={project.id} 
+          onClose={() => {
+            setEditingArticle(null);
+            // We need a hard refresh to see the updated title/image in the list
+            window.location.reload(); 
+          }} 
+        />
+      )}
     </div>
   );
 }
